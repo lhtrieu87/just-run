@@ -1,0 +1,16 @@
+// Vertex shader Phong Shading - Per-pixel lighting
+uniform mat4 uMVPMatrix;
+uniform mat4 uMVMatrix;
+uniform mat4 normalMatrix;
+attribute vec2 textureCoord;
+attribute vec4 vertexPosition;
+attribute vec3 vertexNormal;
+varying vec3 ecNormal;
+varying vec4 ecPosition;
+varying vec2 tCoord;
+void main() {
+	ecNormal = vec3(normalMatrix * vec4(vertexNormal, 1.0));
+	ecPosition = uMVMatrix * vertexPosition;
+	tCoord = textureCoord;
+	gl_Position = uMVPMatrix * vertexPosition;
+}

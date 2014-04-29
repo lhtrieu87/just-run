@@ -1,0 +1,105 @@
+//UberLight fragment shader
+//precision mediump float;
+
+// light properties
+uniform vec4 lAmbient;
+uniform vec4 lDiffuse;
+uniform vec4 lSpecular;
+uniform vec3 LightWeight;
+
+// model material
+uniform vec4 matAmbient;
+uniform vec4 matDiffuse;
+uniform vec4 matSpecular;
+
+// Surface parameters
+uniform vec3 SurfaceWeights;
+uniform float SurfaceRoughness;
+uniform bool AmbientClamping;
+
+// The superellipse function is defined as
+// (x / d) ^ (2 / d) + (y / d) ^ (2 / d) = 1
+// when d = 0, it became rectangle
+// when d = 1, it became ecllipse
+// when d = 0.5, it became circle
+
+// Super ellipse shaping parameters
+uniform bool BarnShaping;
+uniform float SeWidth;
+uniform float SeHeight;
+uniform float SeWidthEdge;
+uniform float SeHeightEdge;
+uniform float SeRoundness;
+
+// Distance shaping parameters
+uniform float DsNear;
+uniform float DsFar;
+uniform float DsNearEdge;
+uniform float DsFarEdge;
+
+
+varying vec3 lcPos; // vertex position in light coordinate
+varying vec3 lcNormal; // normal vector in light coordinate
+varying vec3 lcView; // camera position in light coordinate
+
+float superEllipseShape(vec3 pos)
+{
+	if(!BarnShaping)
+		return 1.0;
+	else
+	{
+		// project the point onto the z = 1.0 plane
+		vec2 ppos = pos.xy / pos.z;
+		vec2 abspos = abs(ppos);
+		
+		float w = SeWidth;
+		float W = SeWidth / SeWidthEdge;
+		float h = SeHeight;
+		float H = SeHeight / SeHeightEdge;
+		
+		float exp1 = 2.0 / SeRoundness;
+		float exp2 = -SeRoundness / 2.0;
+		
+		float inner = w * h * pow(pow(h * abspos.x, exp1) + 
+			pow(w * abspos.y, exp1), exp2);
+		float outer = W * H * pow(pow(H * abspos.x, exp1) + 
+			pow(W * abspos.y, exp1), exp2);
+		
+		return 1.0 - smoothstep(inner, outer, 1.0);
+	}
+}
+
+float distanceShape(vec3 pos)
+{
+	float depth;
+	
+	depth = abs(pos.z);
+	
+	return smoothstep(DsNear - DsNearEdge, DsNear, depth) *
+		(1.0 - smoothstep(DsFar, DsFar + DsFarEdge, depth));
+}
+
+void main()
+{
+	vec3 N = normalize(lcNormal);
+	vec3 L = -normalize(lcPos);
+	vec3 V = normalize(lcView - lcPos);
+	vec3 H = normalize(L + V);
+	
+	float attenuation = 1.0 * superEllipseShape(lcPos) * distanceShape(lcPos);
+	
+	float N_dot_L = dot(N, L);
+	float N_dot_H = dot(N, H);
+	
+	vec3 litResult;
+	litResult[0] = AmbientClamping ? max(N_dot_L, 0.0) : 1.0;
+	litResult[1] = max(N_dot_L, 0.0);
+	litResult[2] = litResult[1] * max(N_dot_H, 0.0) * SurfaceRoughness;
+	litResult *= SurfaceWeights * LightWeight;
+	
+	vec4 ambient = lAmbient * matAmbient * litResult[0];
+	vec4 diffuse = lDiffuse * matDiffuse * litResult[1];
+	vec4 specular = lSpecular * matSpecular * litResult[2];
+	
+	gl_FragColor = attenuation * (ambient + diffuse + specular);
+}

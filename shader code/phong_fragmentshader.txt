@@ -1,0 +1,37 @@
+// Fragment shader Phong Shading - Per-pixel lighting
+precision mediump float;
+uniform vec4 lightPos;
+uniform vec4 lAmbient;
+uniform vec4 lDiffuse;
+uniform vec4 lSpecular;
+uniform vec4 matAmbient;
+uniform vec4 matDiffuse;
+uniform vec4 matSpecular;
+uniform float matShininess;
+uniform bool hasTexture;
+uniform bool useTextureColor;
+uniform sampler2D texture1;
+varying vec3 ecNormal;
+varying vec4 ecPosition;
+varying vec2 tCoord;
+void main() {
+	vec3 N = normalize(ecNormal);
+	vec3 E = normalize(-ecPosition.xyz);
+	vec3 L = normalize(lightPos.xyz - ecPosition.xyz);
+	vec3 R = reflect(-L, N);
+	vec4 ambientTerm = lAmbient * matAmbient;
+	vec4 diffuseTerm = lDiffuse * matDiffuse * max(dot(N, L), 0.0);
+	vec4 specularTerm = lSpecular * matSpecular * pow(max(dot(R, E), 0.0), matShininess);
+	if(hasTexture)
+	{
+		vec4 textureColor = texture2D(texture1, tCoord);
+		if(useTextureColor)
+			gl_FragColor = textureColor;	
+		else
+			gl_FragColor = textureColor + diffuseTerm + specularTerm;
+	}
+	else
+	{
+		gl_FragColor = ambientTerm + diffuseTerm + specularTerm;
+	}
+}

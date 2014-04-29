@@ -1,0 +1,32 @@
+//UberLight vertex shader
+uniform mat4 uMVPMatrix; // model-view projection matrix
+uniform mat4 normalMatrix;
+
+attribute vec4 vertexPosition;
+attribute vec3 vertexNormal;
+
+uniform vec4 eyePos;
+
+uniform mat4 transformationMatrix;
+uniform mat4 itTransformationMatrix;
+uniform mat4 wcTolcMatrix; // world coordinate to light coordinate transformation matrix 
+uniform mat4 itWcTolcMatrix; // inverse transpose of wcTolcMatrix
+
+varying vec3 lcPos; // vertex position in light coordinate
+varying vec3 lcNormal; // normal vector in light coordinate
+varying vec3 lcView; // camera position in light coordinate
+
+void main()
+{
+	gl_Position = uMVPMatrix * vertexPosition;
+	
+	// compute world space position and normal
+	vec4 wcPos = transformationMatrix * vertexPosition;
+	vec3 wcNorm = vec4(itTransformationMatrix * normalMatrix).xyz;
+	
+	// compute light coordinate system camera position,
+	// vertex position and normal vector
+	lcView = (wcTolcMatrix * eyePos).xyz;
+	lcPos = (wcTolcMatrix * wcPos).xyz;
+	lcNormal = (itWcTolcMatrix * vec4(wcNorm, 0.0)).xyz;
+}
